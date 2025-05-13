@@ -1,0 +1,3616 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890",
+    "name": "Real Estate Platform - Unified API",
+    "description": "A comprehensive API collection for the Real Estate Platform, combining all essential endpoints for messaging, property management, admin messaging, and user notifications.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// Global pre-request script for all requests",
+          "console.log('Starting request: ' + pm.info.requestName);",
+          "// Set request timestamp for performance tracking",
+          "pm.environment.set('request_timestamp', new Date().getTime());"
+        ],
+        "type": "text/javascript"
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          "// Global test script for all requests",
+          "const responseTime = new Date().getTime() - pm.environment.get('request_timestamp');",
+          "console.log('Response time: ' + responseTime + 'ms');",
+          "",
+          "// Log endpoint performance metrics",
+          "pm.test('Response time is acceptable', function() {",
+          "    pm.expect(responseTime).to.be.below(1000);",
+          "});",
+          "",
+          "// Test for common error formats",
+          "const response = pm.response.json();",
+          "if (pm.response.code >= 400) {",
+          "    console.log('Error response:', response);",
+          "    if (response.message || response.error) {",
+          "        console.log('Error message:', response.message || response.error);",
+          "    }",
+          "}"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "{{baseUrl}}",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register Account",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "console.log('Response:', JSON.stringify(jsonData));",
+                  "",
+                  "// Check for success response with token",
+                  "if (jsonData && jsonData.success === true && jsonData.data) {",
+                  "    let token = null;",
+                  "    // Handle different token property names",
+                  "    if (jsonData.data.token) {",
+                  "        token = jsonData.data.token;",
+                  "    } else if (jsonData.data.access_token) {",
+                  "        token = jsonData.data.access_token;",
+                  "    }",
+                  "",
+                  "    if (token) {",
+                  "        // Store token in environment variables",
+                  "        pm.environment.set(\"authToken\", token);",
+                  "        console.log('Token stored successfully:', token.substring(0, 10) + '...');",
+                  "",
+                  "        // Store user data if available",
+                  "        if (jsonData.data.user) {",
+                  "            pm.environment.set(\"userId\", jsonData.data.user.id);",
+                  "            pm.environment.set(\"userRole\", jsonData.data.user.role_id || 3);",
+                  "            pm.environment.set(\"isAdmin\", (jsonData.data.user.role_id === 1));",
+                  "            console.log('User data stored for ID:', jsonData.data.user.id);",
+                  "        }",
+                  "    } else {",
+                  "        console.log('No token found in response');",
+                  "    }",
+                  "} else if (jsonData && jsonData.message) {",
+                  "    console.log('API message:', jsonData.message);",
+                  "}",
+                  ""
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Test User",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "{{userEmail}}",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "{{userPassword}}",
+                  "type": "text"
+                },
+                {
+                  "key": "password_confirmation",
+                  "value": "{{userPassword}}",
+                  "type": "text"
+                },
+                {
+                  "key": "phone_number",
+                  "value": "+1234567890",
+                  "type": "text"
+                },
+                {
+                  "key": "national_id",
+                  "value": "{{nationalId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "governorate",
+                  "value": "{{governorate}}",
+                  "type": "text"
+                },
+                {
+                  "key": "role_id",
+                  "value": "2",
+                  "type": "text",
+                  "description": "Role ID (1=Admin, 2=Regular User, 3=Property Owner)"
+                },
+                {
+                  "key": "admin_code",
+                  "value": "{{adminSecretCode}}",
+                  "type": "text",
+                  "description": "Required only when registering as admin (role_id=1)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Register a new account with role-based access control. Use role_id to differentiate between account types (1=Admin, 2=Regular User, 3=Property Owner). Admin registration requires an admin_code."
+          }
+        },
+        {
+          "name": "Register Complete with Photos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.token) {",
+                  "    // Store token based on role",
+                  "    if (jsonData.data.user.role_id === 1) {",
+                  "        pm.environment.set(\"adminToken\", jsonData.data.token);",
+                  "        pm.environment.set(\"adminId\", jsonData.data.user.id);",
+                  "    } else {",
+                  "        pm.environment.set(\"userToken\", jsonData.data.token);",
+                  "        pm.environment.set(\"userId\", jsonData.data.user.id);",
+                  "    }",
+                  "    // Store general token and user data",
+                  "    pm.environment.set(\"authToken\", jsonData.data.token);",
+                  "    pm.environment.set(\"currentUserId\", jsonData.data.user.id);",
+                  "    pm.environment.set(\"userRole\", jsonData.data.user.role_id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Test User",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "{{userEmail}}",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "{{userPassword}}",
+                  "type": "text"
+                },
+                {
+                  "key": "password_confirmation",
+                  "value": "{{userPassword}}",
+                  "type": "text"
+                },
+                {
+                  "key": "phone_number",
+                  "value": "+1234567890",
+                  "type": "text"
+                },
+                {
+                  "key": "national_id",
+                  "value": "{{nationalId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "governorate",
+                  "value": "{{governorate}}",
+                  "type": "text"
+                },
+                {
+                  "key": "role_id",
+                  "value": "2",
+                  "type": "text",
+                  "description": "Role ID (1=Admin, 2=Regular User, 3=Property Owner)"
+                },
+                {
+                  "key": "admin_code",
+                  "value": "{{adminSecretCode}}",
+                  "type": "text",
+                  "description": "Required only when registering as admin (role_id=1)"
+                },
+                {
+                  "key": "profile_photo",
+                  "type": "file",
+                  "src": "/path/to/profile_photo.jpg",
+                  "description": "User profile picture (JPG/PNG, max 5MB). Stored in storage/app/public/users/{user_id}/profile directory and linked in the users table via profile_photo_path field."
+                },
+                {
+                  "key": "id_front_photo",
+                  "type": "file",
+                  "src": "/path/to/national_id_front.jpg",
+                  "description": "Front side of national ID (JPG/PNG, max 5MB). Stored in storage/app/public/users/{user_id}/documents directory and linked in the user_documents table with type='national_id_front'."
+                },
+                {
+                  "key": "id_back_photo",
+                  "type": "file",
+                  "src": "/path/to/national_id_back.jpg",
+                  "description": "Back side of national ID (JPG/PNG, max 5MB). Stored in storage/app/public/users/{user_id}/documents directory and linked in the user_documents table with type='national_id_back'."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register-complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register-complete"]
+            },
+            "description": "Register a new account with profile photos and ID verification in a single request. Photos are stored in designated directories and linked in the database. Uses role_id to determine account type with the same permissions structure as the regular register endpoint."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Ensure required environment variables are set",
+                  "if (!pm.environment.get('userEmail')) {",
+                  "    pm.environment.set('userEmail', 'test@example.com');",
+                  "    console.log('Set default test email');",
+                  "}",
+                  "",
+                  "if (!pm.environment.get('userPassword')) {",
+                  "    pm.environment.set('userPassword', 'Password123!');",
+                  "    console.log('Set default test password');",
+                  "}",
+                  "",
+                  "console.log('Using login credentials:', pm.environment.get('userEmail'));"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData && jsonData.data && jsonData.data.token) {",
+                  "    // Store token based on role",
+                  "    if (jsonData.data.user.role_id === 1) {",
+                  "        pm.environment.set(\"adminToken\", jsonData.data.token);",
+                  "        pm.environment.set(\"adminId\", jsonData.data.user.id);",
+                  "    } else {",
+                  "        pm.environment.set(\"userToken\", jsonData.data.token);",
+                  "        pm.environment.set(\"userId\", jsonData.data.user.id);",
+                  "    }",
+                  "    // Store general token and user data",
+                  "    pm.environment.set(\"authToken\", jsonData.data.token);",
+                  "    pm.environment.set(\"currentUserId\", jsonData.data.user.id);",
+                  "    pm.environment.set(\"userRole\", jsonData.data.user.role_id);",
+                  "    pm.environment.set(\"isAdmin\", jsonData.data.user.role_id === 1);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Unified login endpoint for all user types. The response includes the user's role_id which determines their permissions. The test script stores tokens appropriately based on role."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Logout and invalidate token for any user type."
+          }
+        },
+        {
+          "name": "Get My Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me"]
+            },
+            "description": "Get the authenticated user's profile information including role information. Works for all user types."
+          }
+        }
+      ],
+      "description": "Unified authentication system with role-based access control. Use role_id to differentiate between account types (1=Admin, 2=Regular User, 3=Property Owner)."
+    },
+    {
+      "name": "Admin Messages",
+      "item": [
+        {
+          "name": "List Admin Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "messages"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "draft",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get a list of all admin messages"
+          }
+        },
+        {
+          "name": "Create Admin Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Important Announcement",
+                  "type": "text",
+                  "description": "Title of the message"
+                },
+                {
+                  "key": "content",
+                  "value": "This is an important message for all users.",
+                  "type": "text",
+                  "description": "Content of the message"
+                },
+                {
+                  "key": "type",
+                  "value": "announcement",
+                  "type": "text",
+                  "description": "Type of message (announcement, alert, notification)"
+                },
+                {
+                  "key": "target_type",
+                  "value": "all",
+                  "type": "text",
+                  "description": "Target audience (all, specific_users, property_owners, tenants)"
+                },
+                {
+                  "key": "target_ids",
+                  "value": "",
+                  "type": "text",
+                  "description": "Comma-separated list of user IDs (when target_type is specific_users)"
+                },
+                {
+                  "key": "status",
+                  "value": "draft",
+                  "type": "text",
+                  "description": "Status (draft, published, scheduled)"
+                },
+                {
+                  "key": "scheduled_at",
+                  "value": "2023-12-31T12:00:00Z",
+                  "type": "text",
+                  "description": "When to send the message (for scheduled status)"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "/path/to/announcement_image.jpg",
+                  "description": "Optional image to include with the message (JPG/PNG, max 5MB)"
+                },
+                {
+                  "key": "attachments[]",
+                  "type": "file",
+                  "src": "/path/to/document1.pdf",
+                  "description": "Optional document attachment (PDF, DOC, max 10MB)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "messages"]
+            },
+            "description": "Create a new admin message with optional image and file attachments. Images are stored in the storage/app/public/admin/messages directory and linked to the message in the database."
+          }
+        },
+        {
+          "name": "Get Admin Message",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/messages/{{adminMessageId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "messages", "{{adminMessageId}}"]
+            },
+            "description": "Get a specific admin message by ID"
+          }
+        },
+        {
+          "name": "Update Admin Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Updated Announcement",
+                  "type": "text",
+                  "description": "Updated title"
+                },
+                {
+                  "key": "content",
+                  "value": "This message has been updated.",
+                  "type": "text",
+                  "description": "Updated content"
+                },
+                {
+                  "key": "status",
+                  "value": "published",
+                  "type": "text",
+                  "description": "New status"
+                },
+                {
+                  "key": "scheduled_at",
+                  "value": "",
+                  "type": "text",
+                  "description": "New scheduled time (leave empty to remove)"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "/path/to/new_image.jpg",
+                  "description": "New image (leave empty to keep existing)"
+                },
+                {
+                  "key": "remove_image",
+                  "value": "false",
+                  "type": "text",
+                  "description": "Set to true to remove existing image"
+                },
+                {
+                  "key": "attachments[]",
+                  "type": "file",
+                  "src": "/path/to/new_document.pdf",
+                  "description": "New attachment to add"
+                },
+                {
+                  "key": "remove_attachments",
+                  "value": "",
+                  "type": "text",
+                  "description": "Comma-separated IDs of attachments to remove"
+                },
+                {
+                  "key": "_method",
+                  "value": "PUT",
+                  "type": "text",
+                  "description": "Method override for form submission"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/messages/{{adminMessageId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "messages", "{{adminMessageId}}"]
+            },
+            "description": "Update an existing admin message with support for modifying/removing attached images and files. Uses the _method override to handle PUT with form-data."
+          }
+        },
+        {
+          "name": "Delete Admin Message",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/messages/{{adminMessageId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "messages", "{{adminMessageId}}"]
+            },
+            "description": "Delete an admin message"
+          }
+        },
+        {
+          "name": "Send Admin Message Now",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/messages/{{adminMessageId}}/send",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "messages", "{{adminMessageId}}", "send"]
+            },
+            "description": "Send a scheduled admin message immediately"
+          }
+        }
+      ],
+      "description": "Endpoints for managing admin messages"
+    },
+    {
+      "name": "User Notifications",
+      "item": [
+        {
+          "name": "Get User Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "disabled": true
+                },
+                {
+                  "key": "is_read",
+                  "value": "false",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get a list of user notifications"
+          }
+        },
+        {
+          "name": "Get Notification",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "{{notificationId}}"]
+            },
+            "description": "Get a specific notification by ID"
+          }
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "{{notificationId}}", "read"]
+            },
+            "description": "Mark a specific notification as read"
+          }
+        },
+        {
+          "name": "Mark All Notifications as Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/read-all",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "read-all"]
+            },
+            "description": "Mark all notifications as read"
+          }
+        },
+        {
+          "name": "Get Notification Settings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notification-settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notification-settings"]
+            },
+            "description": "Get user notification preferences"
+          }
+        },
+        {
+          "name": "Update Notification Settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email_notifications\": true,\n    \"push_notifications\": true,\n    \"sms_notifications\": false,\n    \"marketing_emails\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/notification-settings",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notification-settings"]
+            },
+            "description": "Update user notification preferences"
+          }
+        }
+      ],
+      "description": "Endpoints for user notifications"
+    },
+    {
+      "name": "User Messages",
+      "item": [
+        {
+          "name": "Get User Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get a list of user messages"
+          }
+        },
+        {
+          "name": "Get Message Thread",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/thread/{{recipientId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "thread", "{{recipientId}}"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get conversation between two users"
+          }
+        },
+        {
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "recipient_id",
+                  "value": "{{recipientId}}",
+                  "type": "text",
+                  "description": "ID of the user receiving the message"
+                },
+                {
+                  "key": "content",
+                  "value": "Hello, I'm interested in your property.",
+                  "type": "text",
+                  "description": "Message text content"
+                },
+                {
+                  "key": "images[]",
+                  "type": "file",
+                  "src": "/path/to/property_image1.jpg",
+                  "description": "Image related to the message (optional). Multiple files can be uploaded."
+                },
+                {
+                  "key": "images[]",
+                  "type": "file",
+                  "src": "/path/to/property_image2.jpg",
+                  "description": "Additional image (optional)"
+                },
+                {
+                  "key": "attachments[]",
+                  "type": "file",
+                  "src": "/path/to/document.pdf",
+                  "description": "Document attachment (optional). Multiple files can be uploaded."
+                },
+                {
+                  "key": "property_id",
+                  "value": "{{propertyId}}",
+                  "type": "text",
+                  "description": "Related property ID (optional)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages"]
+            },
+            "description": "Send a new message to another user with optional images and file attachments. Files are stored in storage/app/public/messages/{user_id} directory and linked to the message in the database."
+          }
+        },
+        {
+          "name": "Get Message",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/{{messageId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "{{messageId}}"]
+            },
+            "description": "Get a specific message by ID"
+          }
+        },
+        {
+          "name": "Delete Message",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/{{messageId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "{{messageId}}"]
+            },
+            "description": "Delete a message"
+          }
+        },
+        {
+          "name": "Get Unread Message Count",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/unread/count",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "unread", "count"]
+            },
+            "description": "Get count of unread messages"
+          }
+        }
+      ],
+      "description": "Endpoints for user-to-user messaging with support for multimedia messages"
+    },
+    {
+      "name": "Properties",
+      "item": [
+        {
+          "name": "List Properties",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/properties",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "sort",
+                  "value": "price",
+                  "disabled": true
+                },
+                {
+                  "key": "order",
+                  "value": "asc",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get list of properties"
+          }
+        },
+        {
+          "name": "Get Property",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/properties/{{propertyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties", "{{propertyId}}"]
+            },
+            "description": "Get details of a specific property"
+          }
+        },
+        {
+          "name": "Create Property",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Modern Apartment",
+                  "type": "text",
+                  "description": "Property title"
+                },
+                {
+                  "key": "description",
+                  "value": "A beautiful modern apartment in the city center",
+                  "type": "text",
+                  "description": "Detailed property description"
+                },
+                {
+                  "key": "price",
+                  "value": "1500",
+                  "type": "text",
+                  "description": "Property price"
+                },
+                {
+                  "key": "location",
+                  "value": "Downtown",
+                  "type": "text",
+                  "description": "Location within the governorate"
+                },
+                {
+                  "key": "governorate",
+                  "value": "{{governorate}}",
+                  "type": "text",
+                  "description": "Governorate/city where property is located"
+                },
+                {
+                  "key": "floor_number",
+                  "value": "5",
+                  "type": "text",
+                  "description": "Floor number for apartments"
+                },
+                {
+                  "key": "bedrooms",
+                  "value": "2",
+                  "type": "text",
+                  "description": "Number of bedrooms"
+                },
+                {
+                  "key": "bathrooms",
+                  "value": "1",
+                  "type": "text",
+                  "description": "Number of bathrooms"
+                },
+                {
+                  "key": "area",
+                  "value": "80",
+                  "type": "text",
+                  "description": "Property area in square meters"
+                },
+                {
+                  "key": "status",
+                  "value": "available",
+                  "type": "text",
+                  "description": "Property status (available, pending, sold, rented)"
+                },
+                {
+                  "key": "type",
+                  "value": "rent",
+                  "type": "text",
+                  "description": "Property type (rent, sale)"
+                },
+                {
+                  "key": "features",
+                  "value": "air_conditioning,balcony,parking",
+                  "type": "text",
+                  "description": "Comma-separated property features"
+                },
+                {
+                  "key": "images[]",
+                  "type": "file",
+                  "src": "/path/to/property_image1.jpg",
+                  "description": "Property image (JPG/PNG, max 10MB). Multiple files can be uploaded."
+                },
+                {
+                  "key": "images[]",
+                  "type": "file",
+                  "src": "/path/to/property_image2.jpg",
+                  "description": "Additional property image"
+                },
+                {
+                  "key": "images[]",
+                  "type": "file",
+                  "src": "/path/to/property_image3.jpg",
+                  "description": "Additional property image"
+                },
+                {
+                  "key": "floor_plan",
+                  "type": "file",
+                  "src": "/path/to/floor_plan.jpg",
+                  "description": "Floor plan image (JPG/PNG, max 10MB)"
+                },
+                {
+                  "key": "documents[]",
+                  "type": "file",
+                  "src": "/path/to/ownership_document.pdf",
+                  "description": "Property documents (PDF, max 10MB). Multiple files can be uploaded."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/properties",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties"]
+            },
+            "description": "Create a new property listing with images and documents. Files are stored in storage/app/public/properties/{property_id} directory and linked to the property in the database."
+          }
+        },
+        {
+          "name": "Update Property",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "Updated Apartment",
+                  "type": "text",
+                  "description": "Updated property title"
+                },
+                {
+                  "key": "description",
+                  "value": "Updated description of the apartment",
+                  "type": "text",
+                  "description": "Updated property description"
+                },
+                {
+                  "key": "price",
+                  "value": "1600",
+                  "type": "text",
+                  "description": "Updated property price"
+                },
+                {
+                  "key": "status",
+                  "value": "pending",
+                  "type": "text",
+                  "description": "Updated property status"
+                },
+                {
+                  "key": "images[]",
+                  "type": "file",
+                  "src": "/path/to/new_property_image.jpg",
+                  "description": "New property image to add"
+                },
+                {
+                  "key": "remove_images",
+                  "value": "1,3",
+                  "type": "text",
+                  "description": "Comma-separated IDs of images to remove"
+                },
+                {
+                  "key": "documents[]",
+                  "type": "file",
+                  "src": "/path/to/new_document.pdf",
+                  "description": "New document to add"
+                },
+                {
+                  "key": "remove_documents",
+                  "value": "2",
+                  "type": "text",
+                  "description": "Comma-separated IDs of documents to remove"
+                },
+                {
+                  "key": "features",
+                  "value": "air_conditioning,balcony,parking,elevator",
+                  "type": "text",
+                  "description": "Updated comma-separated property features"
+                },
+                {
+                  "key": "_method",
+                  "value": "PUT",
+                  "type": "text",
+                  "description": "Method override for form submission"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/properties/{{propertyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties", "{{propertyId}}"]
+            },
+            "description": "Update an existing property with support for adding/removing images and documents. Uses the _method override to handle PUT with form-data."
+          }
+        },
+        {
+          "name": "Delete Property",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/properties/{{propertyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties", "{{propertyId}}"]
+            },
+            "description": "Delete a property"
+          }
+        },
+        {
+          "name": "Search Properties",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/properties/search",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties", "search"],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "modern",
+                  "description": "Search by keyword in title or description"
+                },
+                {
+                  "key": "governorate",
+                  "value": "{{governorate}}",
+                  "description": "Filter by governorate/city"
+                },
+                {
+                  "key": "min_price",
+                  "value": "1000",
+                  "description": "Minimum price"
+                },
+                {
+                  "key": "max_price",
+                  "value": "2000",
+                  "description": "Maximum price"
+                },
+                {
+                  "key": "bedrooms",
+                  "value": "2",
+                  "description": "Number of bedrooms"
+                },
+                {
+                  "key": "bathrooms",
+                  "value": "1",
+                  "description": "Number of bathrooms"
+                },
+                {
+                  "key": "location",
+                  "value": "Downtown",
+                  "description": "Location"
+                },
+                {
+                  "key": "type",
+                  "value": "rent",
+                  "description": "Property type (rent/sale)"
+                },
+                {
+                  "key": "status",
+                  "value": "available",
+                  "description": "Property status"
+                }
+              ]
+            },
+            "description": "Search for properties with various filters including governorate/city"
+          }
+        },
+        {
+          "name": "Featured Properties",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/properties/featured",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties", "featured"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "description": "Number of featured properties to return"
+                }
+              ]
+            },
+            "description": "Get list of featured properties"
+          }
+        },
+        {
+          "name": "My Properties",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/properties/my",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties", "my"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "10",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get list of properties owned by the authenticated user"
+          }
+        }
+      ],
+      "description": "Endpoints for property management including image and document uploads"
+    },
+    {
+      "name": "Favorites",
+      "item": [
+        {
+          "name": "Get My Favorites",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/favorites",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "favorites"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "10",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get list of properties saved to favorites by the user"
+          }
+        },
+        {
+          "name": "Add to Favorites",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"property_id\": \"{{propertyId}}\",\n    \"notes\": \"Potential rental for summer\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/favorites",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "favorites"]
+            },
+            "description": "Add a property to favorites"
+          }
+        },
+        {
+          "name": "Remove from Favorites",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/favorites/{{propertyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "favorites", "{{propertyId}}"]
+            },
+            "description": "Remove a property from favorites"
+          }
+        },
+        {
+          "name": "Check Favorite Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/favorites/check/{{propertyId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "favorites", "check", "{{propertyId}}"]
+            },
+            "description": "Check if a property is in user's favorites"
+          }
+        }
+      ],
+      "description": "Endpoints for managing favorite properties"
+    },
+    {
+      "name": "Transactions",
+      "item": [
+        {
+          "name": "Get My Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transactions"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "10",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "completed",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get list of transactions for the authenticated user"
+          }
+        },
+        {
+          "name": "Get Transaction",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/{{transactionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transactions", "{{transactionId}}"]
+            },
+            "description": "Get details of a specific transaction"
+          }
+        },
+        {
+          "name": "Create Payment Intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "property_id",
+                  "value": "{{propertyId}}",
+                  "type": "text",
+                  "description": "ID of the property related to this payment"
+                },
+                {
+                  "key": "amount",
+                  "value": "1500",
+                  "type": "text",
+                  "description": "Payment amount"
+                },
+                {
+                  "key": "payment_type",
+                  "value": "rent",
+                  "type": "text",
+                  "description": "Type of payment (rent, deposit, application_fee, etc.)"
+                },
+                {
+                  "key": "payment_method",
+                  "value": "card",
+                  "type": "text",
+                  "description": "Payment method to use (card, bank_transfer, cash)"
+                },
+                {
+                  "key": "description",
+                  "value": "Monthly rent payment for August 2023",
+                  "type": "text",
+                  "description": "Description of the payment"
+                },
+                {
+                  "key": "currency",
+                  "value": "USD",
+                  "type": "text",
+                  "description": "Currency code"
+                },
+                {
+                  "key": "metadata[period_start]",
+                  "value": "2023-08-01",
+                  "type": "text",
+                  "description": "Start of the rental period this payment covers"
+                },
+                {
+                  "key": "metadata[period_end]",
+                  "value": "2023-08-31",
+                  "type": "text",
+                  "description": "End of the rental period this payment covers"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payment-intents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payment-intents"]
+            },
+            "description": "Create a payment intent for a transaction with detailed metadata."
+          }
+        },
+        {
+          "name": "Confirm Payment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"payment_intent_id\": \"{{paymentIntentId}}\",\n    \"payment_method_id\": \"{{paymentMethodId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payments/confirm",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payments", "confirm"]
+            },
+            "description": "Confirm a payment with payment method details"
+          }
+        },
+        {
+          "name": "Get Payment Methods",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payment-methods"]
+            },
+            "description": "Get all payment methods for the user"
+          }
+        },
+        {
+          "name": "Add Payment Method",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "payment_method_id",
+                  "value": "pm_card_visa",
+                  "type": "text",
+                  "description": "Payment method ID from payment provider"
+                },
+                {
+                  "key": "is_default",
+                  "value": "true",
+                  "type": "text",
+                  "description": "Whether this should be the default payment method"
+                },
+                {
+                  "key": "nickname",
+                  "value": "My Visa Card",
+                  "type": "text",
+                  "description": "User-friendly name for this payment method"
+                },
+                {
+                  "key": "billing_details[name]",
+                  "value": "John Doe",
+                  "type": "text",
+                  "description": "Billing name"
+                },
+                {
+                  "key": "billing_details[address][line1]",
+                  "value": "123 Main St",
+                  "type": "text",
+                  "description": "Billing address line 1"
+                },
+                {
+                  "key": "billing_details[address][city]",
+                  "value": "Anytown",
+                  "type": "text",
+                  "description": "Billing city"
+                },
+                {
+                  "key": "billing_details[address][postal_code]",
+                  "value": "12345",
+                  "type": "text",
+                  "description": "Billing postal code"
+                },
+                {
+                  "key": "billing_details[address][country]",
+                  "value": "US",
+                  "type": "text",
+                  "description": "Billing country code"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/payment-methods",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payment-methods"]
+            },
+            "description": "Add a new payment method with detailed billing information."
+          }
+        },
+        {
+          "name": "Delete Payment Method",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payment-methods/{{paymentMethodId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "payment-methods", "{{paymentMethodId}}"]
+            },
+            "description": "Delete a payment method"
+          }
+        },
+        {
+          "name": "Upload Payment Receipt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "transaction_id",
+                  "value": "{{transactionId}}",
+                  "type": "text",
+                  "description": "ID of the transaction this receipt belongs to"
+                },
+                {
+                  "key": "receipt",
+                  "type": "file",
+                  "src": "/path/to/payment_receipt.pdf",
+                  "description": "Receipt document (PDF, JPG, PNG)"
+                },
+                {
+                  "key": "payment_date",
+                  "value": "2023-08-05",
+                  "type": "text",
+                  "description": "Date when payment was made"
+                },
+                {
+                  "key": "payment_method",
+                  "value": "bank_transfer",
+                  "type": "text",
+                  "description": "Method used for payment"
+                },
+                {
+                  "key": "reference_number",
+                  "value": "TRX123456",
+                  "type": "text",
+                  "description": "Payment reference number"
+                },
+                {
+                  "key": "notes",
+                  "value": "Bank transfer receipt for August rent",
+                  "type": "text",
+                  "description": "Additional notes about this payment"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/{{transactionId}}/receipt",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transactions", "{{transactionId}}", "receipt"]
+            },
+            "description": "Upload a receipt for a completed transaction. This is especially useful for bank transfers and cash payments that need verification. The receipt is stored in storage/app/public/receipts/{transaction_id} directory."
+          }
+        },
+        {
+          "name": "Get Transaction Receipts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/transactions/{{transactionId}}/receipts",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "transactions", "{{transactionId}}", "receipts"]
+            },
+            "description": "Get all receipts associated with a transaction, including their download URLs and metadata."
+          }
+        },
+        {
+          "name": "Manual Payment Record",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "property_id",
+                  "value": "{{propertyId}}",
+                  "type": "text",
+                  "description": "Property ID related to this payment"
+                },
+                {
+                  "key": "user_id",
+                  "value": "{{userId}}",
+                  "type": "text",
+                  "description": "User ID who made the payment"
+                },
+                {
+                  "key": "amount",
+                  "value": "1500",
+                  "type": "text",
+                  "description": "Payment amount"
+                },
+                {
+                  "key": "payment_type",
+                  "value": "rent",
+                  "type": "text",
+                  "description": "Type of payment (rent, deposit, fee)"
+                },
+                {
+                  "key": "payment_method",
+                  "value": "cash",
+                  "type": "text",
+                  "description": "Payment method used"
+                },
+                {
+                  "key": "payment_date",
+                  "value": "2023-08-05",
+                  "type": "text",
+                  "description": "Date the payment was made"
+                },
+                {
+                  "key": "notes",
+                  "value": "Cash payment received in office",
+                  "type": "text",
+                  "description": "Additional notes about this payment"
+                },
+                {
+                  "key": "receipt",
+                  "type": "file",
+                  "src": "/path/to/receipt.jpg",
+                  "description": "Scanned receipt or payment proof"
+                },
+                {
+                  "key": "period_start",
+                  "value": "2023-08-01",
+                  "type": "text",
+                  "description": "Start of the period this payment covers"
+                },
+                {
+                  "key": "period_end",
+                  "value": "2023-08-31",
+                  "type": "text",
+                  "description": "End of the period this payment covers"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/transactions/manual",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "transactions", "manual"]
+            },
+            "description": "Admin endpoint to record manual payments (cash, check, etc.) with receipt upload. This creates a transaction record and links it to the user and property."
+          }
+        }
+      ],
+      "description": "Endpoints for managing transactions and payments with receipt documentation"
+    },
+    {
+      "name": "User Profile",
+      "item": [
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"name\": \"Updated Name\",\n    \"email\": \"updated@example.com\",\n    \"phone\": \"+1987654321\",\n    \"national_id\": \"{{nationalId}}\",\n    \"governorate\": \"{{governorate}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/user/profile",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "profile"]
+            },
+            "description": "Update user profile information including national ID and governorate. Available to all authenticated users regardless of role."
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"current_password\": \"{{userPassword}}\",\n    \"password\": \"newPassword123\",\n    \"password_confirmation\": \"newPassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/user/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "password"]
+            },
+            "description": "Change the user's password. Available to all authenticated users regardless of role."
+          }
+        },
+        {
+          "name": "Upload Profile Photo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "profile_photo",
+                  "type": "file",
+                  "src": "/path/to/profile_photo.jpg",
+                  "description": "User profile picture (JPG/PNG, max 5MB). Stored in storage/app/public/users/{user_id}/profile directory and linked in the users table via profile_photo_path field."
+                },
+                {
+                  "key": "is_default",
+                  "value": "true",
+                  "type": "text",
+                  "description": "Whether to set as the default profile photo"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/user/profile-photo",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "profile-photo"]
+            },
+            "description": "Upload a profile photo for the user's account. The file is stored in storage/app/public/users/{user_id}/profile directory and linked to the user record in the database. Available to all authenticated users regardless of role."
+          }
+        },
+        {
+          "name": "Upload National ID Photo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "id_front_photo",
+                  "type": "file",
+                  "src": "/path/to/national_id_front.jpg",
+                  "description": "Front side of national ID (JPG/PNG, max 5MB). Stored in storage/app/public/users/{user_id}/documents directory and linked in the user_documents table with type='national_id_front'."
+                },
+                {
+                  "key": "id_back_photo",
+                  "type": "file",
+                  "src": "/path/to/national_id_back.jpg",
+                  "description": "Back side of national ID (JPG/PNG, max 5MB). Stored in storage/app/public/users/{user_id}/documents directory and linked in the user_documents table with type='national_id_back'."
+                },
+                {
+                  "key": "id_type",
+                  "value": "national_id",
+                  "type": "text",
+                  "description": "Type of ID document (national_id, passport, driving_license)"
+                },
+                {
+                  "key": "id_number",
+                  "value": "{{nationalId}}",
+                  "type": "text",
+                  "description": "ID number matching the uploaded document"
+                },
+                {
+                  "key": "expiry_date",
+                  "value": "2030-12-31",
+                  "type": "text",
+                  "description": "ID document expiry date (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/user/id-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "id-verification"]
+            },
+            "description": "Upload photos of national ID for identity verification (front and back sides). The files are stored in storage/app/public/users/{user_id}/documents directory and linked to user records in the user_documents table. Required for users with role_id 2 or 3 before performing certain actions."
+          }
+        },
+        {
+          "name": "Get User Profile Photos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user/photos",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "photos"]
+            },
+            "description": "Get URLs to user's profile photo and verification documents. Available to all authenticated users for viewing their own photos."
+          }
+        },
+        {
+          "name": "Update Complete Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Updated Name",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "updated@example.com",
+                  "type": "text"
+                },
+                {
+                  "key": "phone",
+                  "value": "+1987654321",
+                  "type": "text"
+                },
+                {
+                  "key": "national_id",
+                  "value": "{{nationalId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "governorate",
+                  "value": "{{governorate}}",
+                  "type": "text"
+                },
+                {
+                  "key": "profile_photo",
+                  "type": "file",
+                  "src": "/path/to/profile_photo.jpg",
+                  "description": "User profile picture"
+                },
+                {
+                  "key": "id_front_photo",
+                  "type": "file",
+                  "src": "/path/to/national_id_front.jpg",
+                  "description": "Front side of national ID"
+                },
+                {
+                  "key": "id_back_photo",
+                  "type": "file",
+                  "src": "/path/to/national_id_back.jpg",
+                  "description": "Back side of national ID"
+                },
+                {
+                  "key": "_method",
+                  "value": "PUT",
+                  "type": "text",
+                  "description": "Method override for form submission"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/user/profile-complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user", "profile-complete"]
+            },
+            "description": "Update user profile including profile photo and ID verification documents in a single request. Available to all authenticated users regardless of role."
+          }
+        },
+        {
+          "name": "Get User By ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{userId}}"]
+            },
+            "description": "Get another user's public profile information. Admin users (role_id=1) can see all details, while other users see only limited public information."
+          }
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users"],
+              "query": [
+                {
+                  "key": "role_id",
+                  "value": "2",
+                  "description": "Filter users by role",
+                  "disabled": true
+                },
+                {
+                  "key": "verified",
+                  "value": "true",
+                  "description": "Filter by verification status",
+                  "disabled": true
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Search by name or email",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List users with filtering options. Requires admin role (role_id=1). Non-admin users are not authorized to access this endpoint."
+          }
+        }
+      ],
+      "description": "Endpoints for managing user profiles with unified role-based authentication. Some endpoints have role-specific access controls."
+    },
+    {
+      "name": "Rental Applications",
+      "item": [
+        {
+          "name": "Submit Application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"property_id\": \"{{propertyId}}\",\n    \"move_in_date\": \"2023-08-01\",\n    \"lease_term\": 12,\n    \"monthly_income\": 5000,\n    \"employment_status\": \"full_time\",\n    \"employer\": \"Example Company\",\n    \"occupation\": \"Software Engineer\",\n    \"additional_occupants\": 1,\n    \"pets\": false,\n    \"has_references\": true,\n    \"credit_check_consent\": true,\n    \"background_check_consent\": true,\n    \"national_id\": \"{{nationalId}}\",\n    \"governorate\": \"{{governorate}}\",\n    \"additional_information\": \"I'm interested in a long-term lease\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/applications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "applications"]
+            },
+            "description": "Submit a rental application for a property with national ID and governorate"
+          }
+        }
+      ],
+      "description": "Endpoints for managing rental applications"
+    },
+    {
+      "name": "Search Properties by Governorate",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Accept",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/properties/search",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "properties", "search"],
+          "query": [
+            {
+              "key": "governorate",
+              "value": "{{governorate}}",
+              "description": "Filter by governorate (city)",
+              "disabled": true
+            },
+            {
+              "key": "min_price",
+              "value": "1000",
+              "description": "Minimum price",
+              "disabled": true
+            },
+            {
+              "key": "max_price",
+              "value": "2000",
+              "description": "Maximum price",
+              "disabled": true
+            }
+          ]
+        },
+        "description": "Search for properties by governorate (city)"
+      }
+    },
+    {
+      "name": "Media Library",
+      "item": [
+        {
+          "name": "Upload Files",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "files[]",
+                  "type": "file",
+                  "src": "/path/to/file1.jpg",
+                  "description": "File to upload. Multiple files can be uploaded."
+                },
+                {
+                  "key": "files[]",
+                  "type": "file",
+                  "src": "/path/to/file2.pdf",
+                  "description": "Additional file to upload"
+                },
+                {
+                  "key": "model_type",
+                  "value": "property",
+                  "type": "text",
+                  "description": "Type of model to associate with (property, message, user, application, etc.)"
+                },
+                {
+                  "key": "model_id",
+                  "value": "{{propertyId}}",
+                  "type": "text",
+                  "description": "ID of the model to associate with"
+                },
+                {
+                  "key": "tags",
+                  "value": "kitchen,interior,document",
+                  "type": "text",
+                  "description": "Comma-separated tags to categorize files"
+                },
+                {
+                  "key": "is_public",
+                  "value": "true",
+                  "type": "text",
+                  "description": "Whether the files should be publicly accessible"
+                },
+                {
+                  "key": "captions",
+                  "value": "Kitchen Photo,Floor Plan",
+                  "type": "text",
+                  "description": "Comma-separated captions for each file in the order of upload"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/media/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media", "upload"]
+            },
+            "description": "Unified file upload endpoint that handles storage for any model type. Files are stored in storage/app/public/{model_type}/{model_id} directory and linked in the media table with polymorphic relations."
+          }
+        },
+        {
+          "name": "Get Media Library",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/media",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media"],
+              "query": [
+                {
+                  "key": "model_type",
+                  "value": "property",
+                  "description": "Filter by model type"
+                },
+                {
+                  "key": "model_id",
+                  "value": "{{propertyId}}",
+                  "description": "Filter by model ID"
+                },
+                {
+                  "key": "tag",
+                  "value": "interior",
+                  "description": "Filter by tag",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "image",
+                  "description": "Filter by file type (image, document, video)",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "per_page",
+                  "value": "15",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get a list of media files with filtering options. Returns file URLs, metadata, and associated models."
+          }
+        },
+        {
+          "name": "Delete Media",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/media/{{mediaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media", "{{mediaId}}"]
+            },
+            "description": "Delete a media file by ID. Removes both the database entry and the file from storage."
+          }
+        },
+        {
+          "name": "Update Media Metadata",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "caption",
+                  "value": "Updated Kitchen View",
+                  "type": "text",
+                  "description": "New caption for the media"
+                },
+                {
+                  "key": "tags",
+                  "value": "kitchen,renovated,modern",
+                  "type": "text",
+                  "description": "Updated comma-separated tags"
+                },
+                {
+                  "key": "is_featured",
+                  "value": "true",
+                  "type": "text",
+                  "description": "Whether this media should be featured"
+                },
+                {
+                  "key": "sort_order",
+                  "value": "1",
+                  "type": "text",
+                  "description": "Display order among related media"
+                },
+                {
+                  "key": "is_public",
+                  "value": "true",
+                  "type": "text",
+                  "description": "Whether the media should be publicly accessible"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/path/to/replacement_file.jpg",
+                  "description": "New file to replace the existing one (optional)"
+                },
+                {
+                  "key": "_method",
+                  "value": "PUT",
+                  "type": "text",
+                  "description": "Method override for form submission"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/media/{{mediaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media", "{{mediaId}}"]
+            },
+            "description": "Update media metadata or replace the file. Uses _method override to handle PUT with form-data."
+          }
+        },
+        {
+          "name": "Bulk Media Operations",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{userToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "operation",
+                  "value": "tag",
+                  "type": "text",
+                  "description": "Operation to perform (tag, untag, delete, move)"
+                },
+                {
+                  "key": "media_ids",
+                  "value": "1,2,3,4",
+                  "type": "text",
+                  "description": "Comma-separated media IDs to operate on"
+                },
+                {
+                  "key": "tags",
+                  "value": "featured,homepage",
+                  "type": "text",
+                  "description": "Tags to add (for tag operation)"
+                },
+                {
+                  "key": "new_model_type",
+                  "value": "property",
+                  "type": "text",
+                  "description": "New model type (for move operation)"
+                },
+                {
+                  "key": "new_model_id",
+                  "value": "5",
+                  "type": "text",
+                  "description": "New model ID (for move operation)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/media/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "media", "bulk"]
+            },
+            "description": "Perform bulk operations on multiple media files at once (tagging, moving, deleting)."
+          }
+        }
+      ],
+      "description": "Unified media management system for all file uploads across the platform. This centralizes storage management, improves reusability, and provides consistent file handling."
+    },
+    {
+      "name": "Role Management",
+      "item": [
+        {
+          "name": "List Roles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "roles"]
+            },
+            "description": "List all available roles in the system. Requires admin role (role_id=1)."
+          }
+        },
+        {
+          "name": "Get Role Details",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/{{roleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "roles", "{{roleId}}"]
+            },
+            "description": "Get detailed information about a specific role, including associated permissions. Requires admin role (role_id=1)."
+          }
+        },
+        {
+          "name": "Create Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Property Manager",
+                  "type": "text",
+                  "description": "Role name"
+                },
+                {
+                  "key": "display_name",
+                  "value": "Property Manager",
+                  "type": "text",
+                  "description": "User-friendly display name"
+                },
+                {
+                  "key": "description",
+                  "value": "Manages properties on behalf of owners",
+                  "type": "text",
+                  "description": "Role description"
+                },
+                {
+                  "key": "permission_ids",
+                  "value": "1,3,5,7,9",
+                  "type": "text",
+                  "description": "Comma-separated list of permission IDs"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/roles",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "roles"]
+            },
+            "description": "Create a new role with specific permissions. Requires admin role (role_id=1)."
+          }
+        },
+        {
+          "name": "Update Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "display_name",
+                  "value": "Property Manager Plus",
+                  "type": "text",
+                  "description": "Updated display name"
+                },
+                {
+                  "key": "description",
+                  "value": "Enhanced property management role",
+                  "type": "text",
+                  "description": "Updated description"
+                },
+                {
+                  "key": "permission_ids",
+                  "value": "1,3,5,7,9,11,13",
+                  "type": "text",
+                  "description": "Updated comma-separated list of permission IDs"
+                },
+                {
+                  "key": "_method",
+                  "value": "PUT",
+                  "type": "text",
+                  "description": "Method override for form submission"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/{{roleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "roles", "{{roleId}}"]
+            },
+            "description": "Update an existing role. Requires admin role (role_id=1)."
+          }
+        },
+        {
+          "name": "Delete Role",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/roles/{{roleId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "roles", "{{roleId}}"]
+            },
+            "description": "Delete a role (can only delete custom roles, not system defaults). Requires admin role (role_id=1)."
+          }
+        },
+        {
+          "name": "List Permissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/permissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "permissions"]
+            },
+            "description": "List all available permissions in the system. Requires admin role (role_id=1)."
+          }
+        },
+        {
+          "name": "Assign Role to User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "user_id",
+                  "value": "{{userId}}",
+                  "type": "text",
+                  "description": "User ID to assign role to"
+                },
+                {
+                  "key": "role_id",
+                  "value": "3",
+                  "type": "text",
+                  "description": "Role ID to assign (1=Admin, 2=Regular User, 3=Property Owner)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/assign-role",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "assign-role"]
+            },
+            "description": "Assign a role to a user. Requires admin role (role_id=1)."
+          }
+        },
+        {
+          "name": "Get My Permissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me/permissions",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me", "permissions"]
+            },
+            "description": "Get the permissions for the currently authenticated user based on their role. Useful for client-side authorization checks."
+          }
+        }
+      ],
+      "description": "Endpoints for managing roles and permissions in the unified role-based access control system. Default roles are: 1=Admin, 2=Regular User, 3=Property Owner. Additional custom roles can be created."
+    },
+    {
+      "name": "Property Images",
+      "item": [
+        {
+          "name": "Upload Property Images",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "property_id",
+                  "value": "{{propertyId}}",
+                  "type": "text",
+                  "description": "Property ID to associate images with"
+                },
+                {
+                  "key": "images[]",
+                  "type": "file",
+                  "src": "/path/to/property_image1.jpg",
+                  "description": "Property image (JPG/PNG, max 10MB)"
+                },
+                {
+                  "key": "images[]",
+                  "type": "file",
+                  "src": "/path/to/property_image2.jpg",
+                  "description": "Additional property image"
+                },
+                {
+                  "key": "images[]",
+                  "type": "file",
+                  "src": "/path/to/property_image3.jpg",
+                  "description": "Additional property image"
+                },
+                {
+                  "key": "is_featured",
+                  "value": "1,0,0",
+                  "type": "text",
+                  "description": "Comma-separated list of values (1=featured, 0=not) corresponding to each image"
+                },
+                {
+                  "key": "captions",
+                  "value": "Living Room,Kitchen,Bedroom",
+                  "type": "text",
+                  "description": "Comma-separated captions for each image"
+                },
+                {
+                  "key": "order",
+                  "value": "1,2,3",
+                  "type": "text",
+                  "description": "Comma-separated display order for each image"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/properties/images",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties", "images"]
+            },
+            "description": "Upload multiple images for a property with captions and featured status. Images are stored in storage/app/public/properties/{property_id}/images/ directory and linked in the property_images table with metadata. The database records contain paths, captions, and display order."
+          }
+        },
+        {
+          "name": "Delete Property Image",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/properties/images/{{imageId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties", "images", "{{imageId}}"]
+            },
+            "description": "Delete a specific property image by ID. This removes both the database entry from property_images table and the file from storage/app/public/properties/{property_id}/images/ directory."
+          }
+        },
+        {
+          "name": "Update Property Image",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "caption",
+                  "value": "Updated Living Room View",
+                  "type": "text",
+                  "description": "New caption for the image"
+                },
+                {
+                  "key": "is_featured",
+                  "value": "1",
+                  "type": "text",
+                  "description": "Whether this image should be featured (1=yes, 0=no)"
+                },
+                {
+                  "key": "sort_order",
+                  "value": "1",
+                  "type": "text",
+                  "description": "Position in the image gallery (lower numbers appear first)"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": "/path/to/replacement_image.jpg",
+                  "description": "New image to replace the existing one (optional). Will be stored at the same location in storage/app/public/properties/{property_id}/images/ directory."
+                },
+                {
+                  "key": "_method",
+                  "value": "PUT",
+                  "type": "text",
+                  "description": "Method override for form submission"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/properties/images/{{imageId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties", "images", "{{imageId}}"]
+            },
+            "description": "Update a property image's metadata or replace the image file. Updates the property_images table in the database and handles file replacement in storage if a new image is provided."
+          }
+        },
+        {
+          "name": "Get Property Images",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/properties/{{propertyId}}/images",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties", "{{propertyId}}", "images"]
+            },
+            "description": "Get all images associated with a specific property. The response includes image URLs (pointing to storage/app/public/properties/{property_id}/images/ files), captions, and metadata from the property_images table."
+          }
+        },
+        {
+          "name": "Reorder Property Images",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "image_ids",
+                  "value": "5,2,3,1,4",
+                  "type": "text",
+                  "description": "Comma-separated list of image IDs from the property_images table in the desired order"
+                },
+                {
+                  "key": "property_id",
+                  "value": "{{propertyId}}",
+                  "type": "text",
+                  "description": "Property ID these images belong to"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/properties/images/reorder",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "properties", "images", "reorder"]
+            },
+            "description": "Reorder the images for a property gallery. The order specified in image_ids will determine the display order by updating the sort_order field in the property_images table."
+          }
+        }
+      ],
+      "description": "Endpoints for managing property images separately from the main property data. All images are stored in storage/app/public/properties/{property_id}/images/ directory and linked to properties via the property_images table in the database. This table includes metadata like caption, sort order, and featured status."
+    },
+    {
+      "name": "User Documents",
+      "item": [
+        {
+          "name": "Upload ID Documents",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "id_front_photo",
+                  "type": "file",
+                  "src": "/path/to/national_id_front.jpg",
+                  "description": "Front side of national ID (JPG/PNG, max 5MB). Stored in storage/app/public/users/{user_id}/documents/"
+                },
+                {
+                  "key": "id_back_photo",
+                  "type": "file",
+                  "src": "/path/to/national_id_back.jpg",
+                  "description": "Back side of national ID (JPG/PNG, max 5MB). Stored in storage/app/public/users/{user_id}/documents/"
+                },
+                {
+                  "key": "selfie_with_id",
+                  "type": "file",
+                  "src": "/path/to/selfie_with_id.jpg",
+                  "description": "Selfie holding the ID (JPG/PNG, max 5MB). Stored in storage/app/public/users/{user_id}/verification/"
+                },
+                {
+                  "key": "id_type",
+                  "value": "national_id",
+                  "type": "text",
+                  "description": "Type of ID document (national_id, passport, driving_license)"
+                },
+                {
+                  "key": "id_number",
+                  "value": "{{nationalId}}",
+                  "type": "text",
+                  "description": "ID number as shown on the document"
+                },
+                {
+                  "key": "expiry_date",
+                  "value": "2030-12-31",
+                  "type": "text",
+                  "description": "Document expiry date (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/id-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "id-verification"]
+            },
+            "description": "Upload ID verification documents. Files are stored in storage/app/public/users/{user_id}/documents/ and verification/ directories. Database records are created in the user_documents table with file paths and metadata."
+          }
+        },
+        {
+          "name": "Get ID Verification Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/id-verification/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "id-verification", "status"]
+            },
+            "description": "Check the status of the user's ID verification. Returns data from the verification_requests table including status, submission date, and verification date."
+          }
+        },
+        {
+          "name": "Admin: List Pending Verifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/documents/verifications/pending",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "documents", "verifications", "pending"]
+            },
+            "description": "List all pending ID verification requests. Only accessible to admin users (role_id=1). Returns data from verification_requests table with links to uploaded document images."
+          }
+        },
+        {
+          "name": "Admin: Verify ID Documents",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "user_id",
+                  "value": "{{userId}}",
+                  "type": "text",
+                  "description": "ID of user whose documents are being verified"
+                },
+                {
+                  "key": "status",
+                  "value": "approved",
+                  "type": "text",
+                  "description": "Verification status (approved, rejected)"
+                },
+                {
+                  "key": "notes",
+                  "value": "Documents verified successfully",
+                  "type": "text",
+                  "description": "Admin notes about verification"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/documents/verify",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "documents", "verify"]
+            },
+            "description": "Process a user's ID verification request. Only accessible to admin users (role_id=1). Updates the verification_requests table with the verification status."
+          }
+        },
+        {
+          "name": "Upload Additional Documents",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "document",
+                  "type": "file",
+                  "src": "/path/to/document.pdf",
+                  "description": "Document file (PDF/JPG/PNG, max 10MB). Stored in storage/app/public/users/{user_id}/documents/"
+                },
+                {
+                  "key": "document_type",
+                  "value": "utility_bill",
+                  "type": "text",
+                  "description": "Type of document (utility_bill, bank_statement, etc.)"
+                },
+                {
+                  "key": "document_name",
+                  "value": "Electricity Bill May 2023",
+                  "type": "text",
+                  "description": "User-friendly name for the document"
+                },
+                {
+                  "key": "issue_date",
+                  "value": "2023-05-01",
+                  "type": "text",
+                  "description": "Date the document was issued (YYYY-MM-DD)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/upload",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "upload"]
+            },
+            "description": "Upload additional user documents. Files are stored in storage/app/public/users/{user_id}/documents/ directory and linked in the user_documents table."
+          }
+        },
+        {
+          "name": "Get My Documents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents"]
+            },
+            "description": "Get a list of all documents uploaded by the current user. Returns data from the user_documents table with download URLs for files in storage/app/public/users/{user_id}/documents/."
+          }
+        },
+        {
+          "name": "Delete Document",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/documents/{{documentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "documents", "{{documentId}}"]
+            },
+            "description": "Delete a document. Removes the file from storage/app/public/users/{user_id}/documents/ and the record from the user_documents table."
+          }
+        }
+      ],
+      "description": "Endpoints for managing user documents including ID verification and additional documents. All files are stored in structured directories within storage/app/public/users/{user_id}/ and linked to database records in the user_documents and verification_requests tables."
+    }
+  ]
+} 

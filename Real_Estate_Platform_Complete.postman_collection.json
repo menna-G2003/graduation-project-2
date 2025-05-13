@@ -1,0 +1,677 @@
+{
+  "info": {
+    "_postman_id": "c4f7d5e6-1a2b-3c4d-9e8f-7g6h5i4j3k2l",
+    "name": "Real Estate Platform - Complete API",
+    "description": "Comprehensive API collection for the Real Estate Platform with all endpoints and proper authentication handling.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          "// Global pre-request script",
+          "// Create default environment variables if they don't exist",
+          "if (!pm.environment.get('baseUrl')) {",
+          "    pm.environment.set('baseUrl', 'http://localhost:8000');",
+          "    console.log('Set default baseUrl to localhost');",
+          "}",
+          "",
+          "// Set request timestamp for performance tracking",
+          "pm.environment.set('request_timestamp', new Date().getTime());"
+        ],
+        "type": "text/javascript"
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          "// Global test script for all requests",
+          "const responseTime = new Date().getTime() - pm.environment.get('request_timestamp');",
+          "console.log('Response time: ' + responseTime + 'ms');",
+          "",
+          "// Log endpoint performance metrics",
+          "pm.test('Response time is acceptable', function() {",
+          "    pm.expect(responseTime).to.be.below(5000);",
+          "});"
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "{{baseUrl}}",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User (Basic)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "console.log('Response:', JSON.stringify(jsonData));",
+                  "",
+                  "// Check for success response with token",
+                  "if (jsonData && jsonData.success === true && jsonData.data) {",
+                  "    let token = null;",
+                  "    if (jsonData.data.token) token = jsonData.data.token;",
+                  "    else if (jsonData.data.access_token) token = jsonData.data.access_token;",
+                  "",
+                  "    if (token) {",
+                  "        pm.environment.set(\"authToken\", token);",
+                  "        console.log('Token stored successfully');",
+                  "        ",
+                  "        if (jsonData.data.user) {",
+                  "            pm.environment.set(\"userId\", jsonData.data.user.id);",
+                  "            pm.environment.set(\"userRole\", jsonData.data.user.role_id || 3);",
+                  "            pm.environment.set(\"isAdmin\", (jsonData.data.user.role_id === 1));",
+                  "        }",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Test User",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "{{userEmail}}",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "{{userPassword}}",
+                  "type": "text"
+                },
+                {
+                  "key": "password_confirmation",
+                  "value": "{{userPassword}}",
+                  "type": "text"
+                },
+                {
+                  "key": "role_id",
+                  "value": "3",
+                  "type": "text",
+                  "description": "Role ID (1=Admin, 2=Property Manager, 3=Regular User, 4=Content Editor, 5=Support Staff)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
+            },
+            "description": "Basic user registration with minimal required information."
+          }
+        },
+        {
+          "name": "Register User with Photos",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Generate a random email if not set",
+                  "if (!pm.environment.get('userEmail')) {",
+                  "    const randomStr = Math.random().toString(36).substring(2, 10);",
+                  "    pm.environment.set('userEmail', `test.${randomStr}@example.com`);",
+                  "    console.log('Generated random email:', pm.environment.get('userEmail'));",
+                  "}",
+                  "",
+                  "// Set a default password if not set",
+                  "if (!pm.environment.get('userPassword')) {",
+                  "    pm.environment.set('userPassword', 'Password123!');",
+                  "}",
+                  "",
+                  "// Set default test data if not provided",
+                  "if (!pm.environment.get('nationalId')) {",
+                  "    pm.environment.set('nationalId', '12345678901234');",
+                  "}",
+                  "",
+                  "if (!pm.environment.get('governorate')) {",
+                  "    pm.environment.set('governorate', 'Cairo');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "console.log('Response:', JSON.stringify(jsonData));",
+                  "",
+                  "// Check for success response with token",
+                  "if (jsonData && jsonData.success === true && jsonData.data) {",
+                  "    let token = null;",
+                  "    if (jsonData.data.token) token = jsonData.data.token;",
+                  "    else if (jsonData.data.access_token) token = jsonData.data.access_token;",
+                  "",
+                  "    if (token) {",
+                  "        pm.environment.set(\"authToken\", token);",
+                  "        console.log('Token stored successfully');",
+                  "        ",
+                  "        if (jsonData.data.user) {",
+                  "            pm.environment.set(\"userId\", jsonData.data.user.id);",
+                  "            pm.environment.set(\"userRole\", jsonData.data.user.role_id || 3);",
+                  "            pm.environment.set(\"isAdmin\", (jsonData.data.user.role_id === 1));",
+                  "        }",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "name",
+                  "value": "Test User",
+                  "type": "text",
+                  "description": "User's full name"
+                },
+                {
+                  "key": "email",
+                  "value": "{{userEmail}}",
+                  "type": "text",
+                  "description": "Email address, must be unique"
+                },
+                {
+                  "key": "password",
+                  "value": "{{userPassword}}",
+                  "type": "text",
+                  "description": "Password (min 8 chars)"
+                },
+                {
+                  "key": "password_confirmation",
+                  "value": "{{userPassword}}",
+                  "type": "text",
+                  "description": "Password confirmation"
+                },
+                {
+                  "key": "role_id",
+                  "value": "3",
+                  "type": "text",
+                  "description": "User role: 1=Admin, 2=Property Manager, 3=Regular User, 4=Content Editor, 5=Support Staff"
+                },
+                {
+                  "key": "admin_code",
+                  "value": "2000",
+                  "type": "text",
+                  "description": "Required only when registering as admin (role_id=1)"
+                },
+                {
+                  "key": "phone_number",
+                  "value": "+1234567890",
+                  "type": "text",
+                  "description": "Contact phone number"
+                },
+                {
+                  "key": "national_id",
+                  "value": "{{nationalId}}",
+                  "type": "text",
+                  "description": "National ID number"
+                },
+                {
+                  "key": "governorate",
+                  "value": "{{governorate}}",
+                  "type": "text",
+                  "description": "User's governorate/region"
+                },
+                {
+                  "key": "address",
+                  "value": "123 Main Street",
+                  "type": "text",
+                  "description": "User's full address (optional)"
+                },
+                {
+                  "key": "profile_photo",
+                  "type": "file",
+                  "src": "/path/to/profile_photo.jpg",
+                  "description": "User profile picture (JPG/PNG, max 5MB)"
+                },
+                {
+                  "key": "id_front_photo",
+                  "type": "file",
+                  "src": "/path/to/national_id_front.jpg",
+                  "description": "Front side of national ID (JPG/PNG, max 5MB)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register-complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register-complete"]
+            },
+            "description": "Complete registration endpoint with all user information including photos."
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Ensure required environment variables are set",
+                  "if (!pm.environment.get('userEmail')) {",
+                  "    pm.environment.set('userEmail', 'test@example.com');",
+                  "}",
+                  "",
+                  "if (!pm.environment.get('userPassword')) {",
+                  "    pm.environment.set('userPassword', 'Password123!');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "",
+                  "// Handle successful login with token",
+                  "if (jsonData && jsonData.success === true && jsonData.data) {",
+                  "    let token = null;",
+                  "    if (jsonData.data.token) token = jsonData.data.token;",
+                  "    else if (jsonData.data.access_token) token = jsonData.data.access_token;",
+                  "",
+                  "    if (token) {",
+                  "        pm.environment.set(\"authToken\", token);",
+                  "        console.log('Login successful! Token stored.');",
+                  "        ",
+                  "        if (jsonData.data.user) {",
+                  "            pm.environment.set(\"userId\", jsonData.data.user.id);",
+                  "            pm.environment.set(\"userRole\", jsonData.data.user.role_id || 3);",
+                  "            pm.environment.set(\"isAdmin\", (jsonData.data.user.role_id === 1));",
+                  "        }",
+                  "    }",
+                  "} else {",
+                  "    console.log('Login failed:', jsonData.message || 'Unknown error');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{userEmail}}\",\n    \"password\": \"{{userPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login with user credentials to receive an authentication token."
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Logout and invalidate the current user's authentication token."
+          }
+        },
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/user",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "user"]
+            },
+            "description": "Get the authenticated user's profile information."
+          }
+        },
+        {
+          "name": "Forgot Password",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Set a default test email if not already set",
+                  "if (!pm.environment.get('recoveryEmail')) {",
+                  "    // Try to use existing user email if available",
+                  "    if (pm.environment.get('userEmail')) {",
+                  "        pm.environment.set('recoveryEmail', pm.environment.get('userEmail'));",
+                  "    } else {",
+                  "        pm.environment.set('recoveryEmail', 'test@example.com');",
+                  "    }",
+                  "}",
+                  "",
+                  "console.log('Sending password recovery to:', pm.environment.get('recoveryEmail'));"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "console.log('Response:', JSON.stringify(jsonData));",
+                  "",
+                  "if (jsonData && jsonData.success === true) {",
+                  "    console.log('Password reset link sent successfully!');",
+                  "    pm.test('Password reset request successful', function() {",
+                  "        pm.expect(jsonData.success).to.be.true;",
+                  "        pm.expect(jsonData.message).to.include('reset');",
+                  "    });",
+                  "} else {",
+                  "    console.log('Password reset request failed:', jsonData.message || 'Unknown error');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{recoveryEmail}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/forgot-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "forgot-password"]
+            },
+            "description": "Request a password reset link to be sent to the specified email address. This will generate a token in the password_reset_tokens table and send an email with a reset link."
+          }
+        },
+        {
+          "name": "Reset Password",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "// Ensure required variables are set",
+                  "if (!pm.environment.get('resetToken')) {",
+                  "    pm.environment.set('resetToken', 'REPLACE_WITH_ACTUAL_TOKEN');",
+                  "    console.log('⚠️ Please replace the resetToken with an actual token from the database or email link!');",
+                  "}",
+                  "",
+                  "if (!pm.environment.get('recoveryEmail')) {",
+                  "    if (pm.environment.get('userEmail')) {",
+                  "        pm.environment.set('recoveryEmail', pm.environment.get('userEmail'));",
+                  "    } else {",
+                  "        pm.environment.set('recoveryEmail', 'test@example.com');",
+                  "    }",
+                  "}",
+                  "",
+                  "if (!pm.environment.get('newPassword')) {",
+                  "    pm.environment.set('newPassword', 'NewPassword123!');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "console.log('Response:', JSON.stringify(jsonData));",
+                  "",
+                  "if (jsonData && jsonData.success === true) {",
+                  "    console.log('Password reset successful!');",
+                  "    // Update stored password for future login attempts",
+                  "    pm.environment.set('userPassword', pm.environment.get('newPassword'));",
+                  "    pm.test('Password reset successful', function() {",
+                  "        pm.expect(jsonData.success).to.be.true;",
+                  "    });",
+                  "} else {",
+                  "    console.log('Password reset failed:', jsonData.message || 'Unknown error');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{recoveryEmail}}\",\n    \"token\": \"{{resetToken}}\",\n    \"password\": \"{{newPassword}}\",\n    \"password_confirmation\": \"{{newPassword}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/reset-password",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "reset-password"]
+            },
+            "description": "Reset a user's password using the token received from the forgot-password request. The token should be obtained from the password_reset_tokens table or from the reset link sent to the user's email."
+          }
+        }
+      ],
+      "description": "Authentication endpoints for user registration, login, and session management."
+    },
+    {
+      "name": "Admin Messages",
+      "item": [
+        {
+          "name": "List All Admin Messages",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "messages"]
+            },
+            "description": "Get a list of all admin messages. Requires admin authentication."
+          }
+        },
+        {
+          "name": "Create Admin Message",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"title\": \"Important Announcement\",\n    \"content\": \"This is an important announcement for all users.\",\n    \"type\": \"announcement\",\n    \"target_type\": \"all\",\n    \"target_ids\": [],\n    \"status\": \"draft\",\n    \"scheduled_at\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "messages"]
+            },
+            "description": "Create a new admin message. Requires admin authentication."
+          }
+        }
+      ],
+      "description": "Admin messaging system for platform-wide announcements, notifications, and communications."
+    },
+    {
+      "name": "User Notifications",
+      "item": [
+        {
+          "name": "List User Notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications"]
+            },
+            "description": "Get a list of notifications for the authenticated user."
+          }
+        },
+        {
+          "name": "Mark Notification as Read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json",
+                "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/{{notificationId}}/read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "notifications", "{{notificationId}}", "read"]
+            },
+            "description": "Mark a specific notification as read."
+          }
+        }
+      ],
+      "description": "User notifications for important updates, property changes, and personal communications."
+    }
+  ]
+} 
